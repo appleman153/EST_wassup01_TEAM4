@@ -3,7 +3,7 @@
 ![middle](https://capsule-render.vercel.app/api?type=cylinder&color=0147FF&height=150&section=header&text=Wassup&fontColor=FFFFFF&fontSize=70&animation=fadeIn&fontAlignY=55)
   
 **WR(Water_Rocket)** <br>
-김도연 :<br> 
+김도연 : [electronicguy97]((https://github.com/electronicguy97))
 방서빈 :<br>
 이봉훈 : Git Branch management<br>
 이재석 : <br>
