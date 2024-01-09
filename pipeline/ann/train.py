@@ -59,6 +59,27 @@ def evaluate(
 
   return loss.item()
 
+def evaluate_long(
+  model:nn.Module,
+  criterion:callable,
+  data_loader:DataLoader,
+  device:str='cpu',
+)->float:
+  '''evaluate
+
+  Args:
+    model: model
+    criterions: list of criterion functions
+    data_loader: data loader
+    device: device
+    metrcis: metrics
+  '''
+  model.eval()
+  for _ in range(int(test_length/prediction_size)):
+    with torch.inference_mode():
+      prd = model(inp.cuda()).cpu()
+    inp = torch.concat([inp,prd])[-window_size:]
+    prds.append(prd)
 
 def main(cfg):
   import numpy as np
@@ -70,7 +91,7 @@ def main(cfg):
   from collections import defaultdict
   from sklearn.preprocessing import MinMaxScaler
   
-  from metric import mape, mae
+  from metric import mape, mae, R2_score, mse, rmse
   from preprocess import preprocess
 
 
@@ -92,22 +113,32 @@ def main(cfg):
   split = preprocess_params.get('split')
   tst_size = preprocess_params.get('tst_size')
   select_channel_idx = preprocess_params.get('select_channel_idx')
+  c_n = len(select_channel_idx)
 
   trn, tst = preprocess(data, num_idx, tst_size, window_size, select_channel_idx, split)
 
   # data scale
   scaler = MinMaxScaler()
-  trn = scaler.fit_transform(trn)
-  tst = scaler.transform(tst)
+  trn_scale = scaler.fit_transform(trn[:, :1])
+  tst_scale = scaler.transform(tst[:, :1])
+  
+  
+  if c_n >= 2:
+    scaler2 = MinMaxScaler()
+    trn_m = scaler2.fit_transform(trn[:, 1:])
+    trn_scale = np.concatenate((trn_scale, trn_m), axis=1)
+
+    tst_m = scaler2.transform(tst[:, 1:])
+    tst_scale = np.concatenate((tst_scale, tst_m), axis=1)
   
   # trn(dataset, dataloader)
   trn_dl_params = train_params.get('trn_data_loader_params')
-  trn_ds = TimeseriesDataset(trn, window_size, prediction_size)
+  trn_ds = TimeseriesDataset(trn_scale, window_size, prediction_size)
   trn_dl = DataLoader(trn_ds, **trn_dl_params)
 
   # tst(dataset, dataloader)
   tst_dl_params = train_params.get('tst_data_loader_params')
-  tst_ds = TimeseriesDataset(tst, window_size, prediction_size)
+  tst_ds = TimeseriesDataset(tst_scale, window_size, prediction_size)
   tst_dl_params['batch_size'] = len(tst_ds)
   tst_dl = DataLoader(tst_ds, **tst_dl_params)
 
@@ -116,7 +147,7 @@ def main(cfg):
   model_params = cfg.get('model_params')
   model_params['input_dim'] = window_size
   model_params['output_dim'] = prediction_size
-  model_params['c_n'] = len(select_channel_idx)
+  model_params['c_n'] = c_n
   model = model(**model_params).to(device)
 
   # lr_scheduler setting
@@ -154,9 +185,9 @@ def main(cfg):
     prd = model(x)
   
   # inverse scale
-  y = y.cpu()/scaler.scale_[0] + scaler.min_[0]
-  prd = prd.cpu()/scaler.scale_[0] + scaler.min_[0]
-
+  y = scaler.inverse_transform(y.cpu())
+  prd = scaler.inverse_transform(prd.cpu())
+ 
   y = np.concatenate([y[:,0], y[-1,1:]])
   p = np.concatenate([prd[:,0], prd[-1,1:]])
 
@@ -172,7 +203,7 @@ def main(cfg):
   plt.plot(y1, color='#16344E', label='trn_loss')
   plt.plot(y2, color='#71706C', label='tst_loss')
   plt.legend()
-  plt.title('losses')
+  plt.title(f"Neural Network, Min_loss(test):{min(history['tst_loss']):.4f}")
   plt.savefig(f'losses_{log}.png')
 
   # predict and metric
@@ -180,7 +211,7 @@ def main(cfg):
   plt.plot(range(tst_size), p, color='#16344E', label="Prediction")
   plt.plot(range(tst_size), y, color='#71706C', label="True")
   plt.legend()
-  plt.title(f"Neural Network, MAPE:{mape(p,y):.4f}, MAE:{mae(p,y):.4f}")
+  plt.title(f"Neural Network, MAPE:{mape(p,y):.4f}, MAE:{mae(p,y):.4f}, R2_SCORE:{R2_score(p,y):.4f}, MSE:{mse(p,y):.4f}, RMSE:{rmse(p,y):.4f}")
   plt.savefig(f'predict_{log}.png')
 
   # model

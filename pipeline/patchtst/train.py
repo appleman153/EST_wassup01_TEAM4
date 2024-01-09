@@ -154,7 +154,7 @@ def main(cfg):
   plt.plot(y1, color='#16344E', label='trn_loss')
   plt.plot(y2, color='#71706C', label='tst_loss')
   plt.legend()
-  plt.title('losses')
+  plt.title(f"PatchTST Losses, Min_loss(test):{min(history['tst_loss']):.4f}")
   plt.savefig(f'losses_{log}.png')
 
   # predict and metric
@@ -163,7 +163,7 @@ def main(cfg):
   plt.plot(range(predict_range), y, label="True")
   plt.plot(range(predict_range), p, label="Prediction")
   plt.legend()
-  plt.title(f"PatchTST, MAPE:{mape(p,y):.4f}, MAE:{mae(p,y):.4f}, r2_score:{R2_score(p,y):.4f}, mse:{mse(p,y):.4f}, rmse:{rmse(p,y):.4f}")
+  plt.title(f"PatchTST, MAPE:{mape(p,y):.4f}, MAE:{mae(p,y):.4f}, R2_SCORE:{R2_score(p,y):.4f}, MSE:{mse(p,y):.4f}, RMSE:{rmse(p,y):.4f}")
   plt.savefig(f'predict_{log}.png')
 
   # model
