@@ -6,7 +6,7 @@
 - 김도연 : 
 - 방서빈 :
 - 이봉훈 : Git Branch management
-- 이재석 :
+- 이재석 : Git Support
 - 정문선 : </ul>
 
 ### Directory
